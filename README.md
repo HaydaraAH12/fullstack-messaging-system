@@ -1,6 +1,6 @@
 # Fullstack Messaging System
 
-pnpm monorepo for the mail system backend (NestJS) and frontend (Next.js).
+A modern full-stack messaging platform built with Next.js and NestJS in a pnpm monorepo. Features real-time communication, scalable backend APIs, authentication, modular architecture, and shared packages for types.
 
 ## Structure
 
@@ -31,15 +31,9 @@ Copy `.env` into each app (`mail-system-backend`, `mail-system-frontend`) as bef
 | `pnpm build` | Build all packages |
 | `pnpm test` | Backend tests |
 
-## Git
-
-Single repository at this root. Previous per-app remotes:
-
-- Backend: `https://github.com/HaydaraAH12/mail-system-backend.git`
-
-Create a new GitHub repo for the monorepo when ready, then:
+## Remote
 
 ```bash
-git remote add origin <your-monorepo-url>
+git remote add origin https://github.com/HaydaraAH12/fullstack-messaging-system.git
 git push -u origin main
 ```

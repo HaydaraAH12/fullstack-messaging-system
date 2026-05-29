@@ -5,6 +5,7 @@ node_modules/
 !pnpm-lock.yaml
 .pnp
 .pnp.*
+.pnpm-store
 
 # Build outputs
 dist/
@@ -12,12 +13,17 @@ build/
 .next/
 out/
 coverage/
+*.lcov
+.nyc_output
 
 # Logs
+logs/
 *.log
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
 
 # Environment
 .env
@@ -46,6 +52,8 @@ next-env.d.ts
 .tmp/
 .vercel/
 *.pem
+.cache/
+.parcel-cache/
 
 # User-uploaded files (backend)
 mail-system-backend/uploads/
