@@ -1,0 +1,101 @@
+{
+  "common": {
+    "appName": "Communication System",
+    "underDevelopment": "Under development"
+  },
+  "nav": {
+    "mainMenu": "Main menu",
+    "profile": "Profile",
+    "messages": "Messages",
+    "users": "User management",
+    "logout": "Log out",
+    "online": "Online"
+  },
+  "mail": {
+    "section": "Messages",
+    "inbox": "Inbox",
+    "sent": "Sent",
+    "archive": "Archive",
+    "trash": "Trash",
+    "drafts": "Drafts",
+    "draftsDescription": "Draft messages — connect to API later.",
+    "loadError": "Failed to load sidebar",
+    "quickActions": "Quick actions",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "list": {
+      "loading": "Loading messages…",
+      "loadFailed": "Failed to load messages",
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "thisWeek": "This week",
+      "older": "Older"
+    }
+  },
+  "locale": {
+    "label": "Language",
+    "ar": "العربية",
+    "en": "English"
+  },
+  "home": {
+    "title": "Communication System",
+    "subtitle": "Frontend — backend at localhost:8080",
+    "login": "Login",
+    "inbox": "Inbox"
+  },
+  "profile": {
+    "title": "Profile",
+    "description": "Profile page — under development."
+  },
+  "users": {
+    "title": "User management",
+    "description": "User management page — under development."
+  },
+  "inbox": {
+    "title": "Inbox",
+    "description": "Message list — connect to API later."
+  },
+  "sent": {
+    "title": "Sent",
+    "description": "Sent messages — connect to API later."
+  },
+  "archive": {
+    "title": "Archive",
+    "description": "Archived messages — connect to API later."
+  },
+  "trash": {
+    "title": "Trash",
+    "description": "Trash — connect to API later."
+  },
+  "auth": {
+    "checkingSession": "Checking session…",
+    "login": {
+      "title": "Login",
+      "subtitle": "Sign in to your account",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "noAccount": "Don't have an account?",
+      "register": "Register",
+      "failed": "Login failed"
+    },
+    "register": {
+      "title": "Register",
+      "subtitle": "Create a new account",
+      "name": "Name",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Create account",
+      "submitting": "Creating account…",
+      "hasAccount": "Already have an account?",
+      "login": "Login",
+      "failed": "Registration failed"
+    },
+    "serverError": "Something went wrong. Please try again later."
+  },
+  "metadata": {
+    "title": "Communication System",
+    "description": "Fullstack messaging system — frontend"
+  }
+}

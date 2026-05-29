@@ -1,0 +1,4 @@
+packages:
+  - 'packages/*'
+  - 'mail-system-backend'
+  - 'mail-system-frontend'

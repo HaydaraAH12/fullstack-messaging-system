@@ -1,0 +1,258 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+// ─────────────────────────────────────────────
+// USERS
+// ─────────────────────────────────────────────
+model User {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  roleId        String    @map("role_id")
+  fullName      String    @map("full_name")
+  avatarUrl     String?   @map("avatar_url")
+  bio           String?
+  phone         String?
+  isActive      Boolean   @default(true) @map("is_active")
+  lastSeenAt    DateTime? @map("last_seen_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  role              Role               @relation(fields: [roleId], references: [id])
+  sentMessages      Message[]          @relation("SentMessages")
+  messageRecipients MessageRecipient[]
+  notifications     Notification[]
+  sessions          Session[]
+  ownedContacts     Contact[]          @relation("ContactOwner")
+  contactOf         Contact[]          @relation("ContactUser")
+
+  @@map("users")
+}
+
+model Role {
+  id           String        @id @default(uuid())
+  name         String        @unique
+  users        User[]
+  sidebarItems SidebarItem[]
+
+  @@map("roles")
+}
+
+// ─────────────────────────────────────────────
+// SESSIONS
+// ─────────────────────────────────────────────
+model Session {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  familyId        String    @map("family_id")
+  tokenHash       String    @unique @map("token_hash")
+  userAgent       String?   @map("user_agent")
+  ipAddress       String?   @map("ip_address")
+  expiresAt       DateTime  @map("expires_at")
+  revokedAt       DateTime? @map("revoked_at")
+  lastUsedAt      DateTime? @map("last_used_at")
+  familyStartedAt DateTime  @map("family_started_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("sessions")
+}
+
+// ─────────────────────────────────────────────
+// CONTACTS
+// ─────────────────────────────────────────────
+model Contact {
+  id            String   @id @default(uuid())
+  ownerId       String   @map("owner_id")
+  contactUserId String   @map("contact_user_id")
+  nickname      String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  owner       User @relation("ContactOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  contactUser User @relation("ContactUser", fields: [contactUserId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, contactUserId])
+  @@map("contacts")
+}
+
+// ─────────────────────────────────────────────
+// MESSAGES
+// ─────────────────────────────────────────────
+model Message {
+  id              String        @id @default(uuid())
+  senderId        String        @map("sender_id")
+  parentMessageId String?       @map("parent_message_id")
+  subject         String
+  body            String
+  status          MessageStatus @default(DRAFT)
+  isDraft         Boolean       @default(true) @map("is_draft")
+  scheduledAt     DateTime?     @map("scheduled_at")
+  sentAt          DateTime?     @map("sent_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  sender        User               @relation("SentMessages", fields: [senderId], references: [id])
+  parentMessage Message?           @relation("MessageReplies", fields: [parentMessageId], references: [id])
+  replies       Message[]          @relation("MessageReplies")
+  recipients    MessageRecipient[]
+  attachments   Attachment[]
+  notifications Notification[]
+  emailLogs     EmailLog[]
+
+  @@map("messages")
+}
+
+enum MessageStatus {
+  DRAFT
+  SENT
+  SCHEDULED
+  FAILED
+
+  @@map("message_status")
+}
+
+// ─────────────────────────────────────────────
+// MESSAGE RECIPIENTS
+// ─────────────────────────────────────────────
+model MessageRecipient {
+  id            String          @id @default(uuid())
+  messageId     String          @map("message_id")
+  recipientId   String          @map("recipient_id")
+  recipientType RecipientType   @default(TO) @map("recipient_type")
+  folder        MessageFolder   @default(INBOX)
+  isRead        Boolean         @default(false) @map("is_read")
+  isStarred     Boolean         @default(false) @map("is_starred")
+  readAt        DateTime?       @map("read_at")
+  deletedAt     DateTime?       @map("deleted_at")
+
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  recipient User    @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, recipientId])
+  @@map("message_recipients")
+}
+
+enum RecipientType {
+  TO
+  CC
+  BCC
+
+  @@map("recipient_type")
+}
+
+enum MessageFolder {
+  INBOX
+  SENT
+  DRAFT
+  TRASH
+  ARCHIVE
+  STARRED
+
+  @@map("message_folder")
+}
+
+// ─────────────────────────────────────────────
+// ATTACHMENTS
+// ─────────────────────────────────────────────
+model Attachment {
+  id            String   @id @default(uuid())
+  messageId     String   @map("message_id")
+  filename      String
+  fileUrl       String   @map("file_url")
+  mimeType      String   @map("mime_type")
+  fileSizeBytes Int      @map("file_size_bytes")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("attachments")
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────────
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  messageId String?          @map("message_id")
+  type      NotificationType
+  title     String
+  body      String?
+  isRead    Boolean          @default(false) @map("is_read")
+  readAt    DateTime?        @map("read_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  NEW_MESSAGE
+  MESSAGE_READ
+  SYSTEM_ALERT
+
+  @@map("notification_type")
+}
+
+// ─────────────────────────────────────────────
+// EMAIL LOGS
+// ─────────────────────────────────────────────
+model EmailLog {
+  id                String       @id @default(uuid())
+  messageId         String       @map("message_id")
+  providerMessageId String?      @map("provider_message_id")
+  provider          String       // e.g. "sendgrid", "ses"
+  status            EmailStatus
+  errorMessage      String?      @map("error_message")
+  sentAt            DateTime?    @map("sent_at")
+  createdAt         DateTime     @default(now()) @map("created_at")
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("email_logs")
+}
+
+enum EmailStatus {
+  PENDING
+  DELIVERED
+  BOUNCED
+  FAILED
+
+  @@map("email_status")
+}
+
+// ─────────────────────────────────────────────
+// SIDEBAR (mail folders navigation)
+// ─────────────────────────────────────────────
+model SidebarItem {
+  id        String         @id @default(uuid())
+  key       String         @unique
+  name      String
+  icon      String
+  folder    MessageFolder?
+  position  Int
+  isActive  Boolean        @default(true) @map("is_active")
+  roleId    String?        @map("role_id")
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  role Role? @relation(fields: [roleId], references: [id], onDelete: SetNull)
+
+  @@map("sidebar_items")
+}
