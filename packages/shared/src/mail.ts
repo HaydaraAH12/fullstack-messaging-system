@@ -85,7 +85,7 @@ export interface MailSidebarResponse {
 }
 
 export interface SendMessageRecipientInput {
-  userId: string;
+  email: string;
   type?: RecipientType;
 }
 

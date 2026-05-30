@@ -5,6 +5,7 @@ import {
   IsUUID,
   IsArray,
   IsEnum,
+  IsEmail,
   ValidateNested,
   ArrayMinSize,
 } from 'class-validator';
@@ -12,8 +13,11 @@ import { Transform, Type } from 'class-transformer';
 import { RecipientType } from '@prisma/client';
 
 export class RecipientDto {
-  @IsUUID()
-  userId!: string;
+  @IsEmail()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim().toLowerCase() : value,
+  )
+  email!: string;
 
   @IsEnum(RecipientType)
   @IsOptional()
@@ -31,7 +35,7 @@ export class SendMessageDto {
 
   /**
    * When using `multipart/form-data`, `recipients` typically arrives as a JSON string.
-   * Example: '[{"userId":"...","type":"TO"}]'
+   * Example: '[{"email":"user@example.com","type":"TO"}]'
    */
   @Transform(({ value }) => {
     if (typeof value === 'string') return JSON.parse(value);

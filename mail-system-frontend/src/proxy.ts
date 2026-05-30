@@ -11,7 +11,7 @@ import { routing } from "@/i18n/routing";
 
 const intlMiddleware = createIntlMiddleware(routing);
 
-export default function proxy(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { locale, pathWithoutLocale } = parseLocalizedPath(
     request.nextUrl.pathname,
   );

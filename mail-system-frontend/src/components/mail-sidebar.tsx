@@ -4,12 +4,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { MailSidebarItemRow } from "@/components/mail-sidebar-item";
 import { getDirection } from "@/components/locale-direction-sync";
-import { useApiMutation, useApiQuery } from "@/hooks/use-api";
-import {
-  fetchMailSidebar,
-  mailSidebarQueryKey,
-  moveMailSidebarItem,
-} from "@/lib/api/mail-sidebar";
+import { useApiMutation } from "@/hooks/use-api";
+import { useMailSidebarQuery } from "@/hooks/use-mail-sidebar-query";
+import { mailSidebarQueryKey, moveMailSidebarItem } from "@/lib/api/mail-sidebar";
+import { Button } from "@/components/ui/button";
 import type { Locale } from "@/i18n/routing";
 import { SidebarMoveDirection } from "@/types/mail";
 import {
@@ -26,11 +24,7 @@ export function MailSidebar() {
   const t = useTranslations("mail");
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isError } = useApiQuery({
-    queryKey: mailSidebarQueryKey,
-    queryFn: fetchMailSidebar,
-    requireAuth: true,
-  });
+  const { data, isLoading, failed, isFetching, retry } = useMailSidebarQuery();
 
   const moveItem = useApiMutation({
     mutationFn: ({
@@ -61,10 +55,20 @@ export function MailSidebar() {
                 <SidebarMenuSkeleton key={i} showIcon />
               ))}
             </div>
-          ) : isError ? (
-            <p className="px-2 py-3 text-xs text-destructive">
-              {t("loadError")}
-            </p>
+          ) : failed ? (
+            <div className="space-y-2 px-2 py-3">
+              <p className="text-xs text-destructive">{t("loadError")}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 w-full text-xs"
+                disabled={isFetching}
+                onClick={retry}
+              >
+                {t("retry")}
+              </Button>
+            </div>
           ) : (
             <SidebarMenu>
               {items.map((item, index) => (

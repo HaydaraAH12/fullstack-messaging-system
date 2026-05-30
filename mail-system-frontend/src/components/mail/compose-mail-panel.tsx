@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -19,12 +20,25 @@ import {
   Highlighter,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useApiMutation } from "@/hooks/use-api";
+import { refetchMailSidebar } from "@/lib/api/mail-sidebar";
+import { sendMessage } from "@/lib/api/mail-messages";
+import { buildSendRecipients } from "@/lib/mail-recipients";
+import { RecipientField } from "@/components/mail/recipient-field";
+import { toast } from "@/components/app-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { ApiError } from "@/types/api";
 
 const TEXT_COLORS = ["#111827", "#1d4ed8", "#0f766e", "#dc2626", "#9333ea"];
-const HIGHLIGHT_COLORS = ["#fde68a", "#bfdbfe", "#bbf7d0", "#fecaca", "#ddd6fe"];
+const HIGHLIGHT_COLORS = [
+  "#fde68a",
+  "#bfdbfe",
+  "#bbf7d0",
+  "#fecaca",
+  "#ddd6fe",
+];
 const FONT_FAMILIES = [
   "Inter",
   "Arial",
@@ -37,13 +51,15 @@ const FONT_FAMILIES = [
 
 type Props = {
   onCancel?: () => void;
+  onSent?: () => void;
 };
 
-export function ComposeMailPanel({ onCancel }: Props) {
+export function ComposeMailPanel({ onCancel, onSent }: Props) {
+  const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [to, setTo] = useState("");
-  const [cc, setCc] = useState("");
-  const [bcc, setBcc] = useState("");
+  const [toEmails, setToEmails] = useState<string[]>([]);
+  const [ccEmails, setCcEmails] = useState<string[]>([]);
+  const [bccEmails, setBccEmails] = useState<string[]>([]);
   const [subject, setSubject] = useState("");
   const [editorActive, setEditorActive] = useState(false);
 
@@ -67,19 +83,60 @@ export function ComposeMailPanel({ onCancel }: Props) {
   });
 
   const fromValue = useMemo(() => user?.email ?? "", [user?.email]);
+  const body = editor?.getText({ blockSeparator: "\n" }).trim() ?? "";
 
-  const submitDisabled = !to.trim() || !subject.trim();
+  const sendMutation = useApiMutation({
+    mutationFn: sendMessage,
+    onSuccess: async () => {
+      toast.success("Message sent");
+      try {
+        await refetchMailSidebar(queryClient);
+      } catch {
+        /* sidebar counts are best-effort after send */
+      }
+      onSent?.();
+    },
+    onError: (error) => {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "Failed to send message";
+      toast.error(message);
+    },
+  });
+
+  const submitDisabled =
+    toEmails.length === 0 || !subject.trim() || !body || sendMutation.isPending;
+
+  const onSend = () => {
+    const recipients = buildSendRecipients({
+      to: toEmails,
+      cc: ccEmails,
+      bcc: bccEmails,
+    });
+
+    sendMutation.mutate({
+      subject: subject.trim(),
+      body,
+      recipients,
+    });
+  };
 
   return (
     <div className="flex h-full flex-col rounded-lg border border-[var(--mail-detail-panel-border)] bg-[var(--mail-detail-panel-bg)]">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <h3 className="text-sm font-semibold">New mail</h3>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={onCancel}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCancel}
+            disabled={sendMutation.isPending}
+          >
             Cancel
           </Button>
-          <Button size="sm" disabled={submitDisabled}>
-            Send
+          <Button size="sm" onClick={onSend} disabled={submitDisabled}>
+            {sendMutation.isPending ? "Sending…" : "Send"}
           </Button>
         </div>
       </div>
@@ -87,13 +144,29 @@ export function ComposeMailPanel({ onCancel }: Props) {
       <div className="min-h-0 flex-1 overflow-auto p-4">
         <div className="space-y-3">
           <Input value={fromValue} readOnly placeholder="Sender" />
-          <Input value={to} onChange={(e) => setTo(e.target.value)} placeholder="To" />
-          <Input value={cc} onChange={(e) => setCc(e.target.value)} placeholder="Cc" />
-          <Input value={bcc} onChange={(e) => setBcc(e.target.value)} placeholder="Bcc" />
+          <RecipientField
+            label="To"
+            emails={toEmails}
+            onChange={setToEmails}
+            disabled={sendMutation.isPending}
+          />
+          <RecipientField
+            label="Cc"
+            emails={ccEmails}
+            onChange={setCcEmails}
+            disabled={sendMutation.isPending}
+          />
+          <RecipientField
+            label="Bcc"
+            emails={bccEmails}
+            onChange={setBccEmails}
+            disabled={sendMutation.isPending}
+          />
           <Input
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             placeholder="Subject"
+            disabled={sendMutation.isPending}
           />
 
           <div
@@ -112,6 +185,7 @@ export function ComposeMailPanel({ onCancel }: Props) {
                 <select
                   className="bg-transparent text-xs outline-none"
                   defaultValue="Inter"
+                  disabled={sendMutation.isPending}
                   onChange={(e) => {
                     const value = e.target.value;
                     if (value === "__default__") {
@@ -178,7 +252,9 @@ export function ComposeMailPanel({ onCancel }: Props) {
               <Button
                 variant="ghost"
                 size="icon-xs"
-                onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+                onClick={() =>
+                  editor?.chain().focus().toggleOrderedList().run()
+                }
                 aria-label="Ordered list"
                 className={cn(editor?.isActive("orderedList") && "bg-muted")}
               >
@@ -195,7 +271,9 @@ export function ComposeMailPanel({ onCancel }: Props) {
                     type="button"
                     className="size-4 rounded-full border border-border"
                     style={{ backgroundColor: color }}
-                    onClick={() => editor?.chain().focus().setColor(color).run()}
+                    onClick={() =>
+                      editor?.chain().focus().setColor(color).run()
+                    }
                     aria-label={`Text color ${color}`}
                   />
                 ))}
@@ -209,7 +287,9 @@ export function ComposeMailPanel({ onCancel }: Props) {
                     type="button"
                     className="size-4 rounded-sm border border-border"
                     style={{ backgroundColor: color }}
-                    onClick={() => editor?.chain().focus().setHighlight({ color }).run()}
+                    onClick={() =>
+                      editor?.chain().focus().setHighlight({ color }).run()
+                    }
                     aria-label={`Highlight color ${color}`}
                   />
                 ))}
@@ -225,4 +305,3 @@ export function ComposeMailPanel({ onCancel }: Props) {
     </div>
   );
 }
-

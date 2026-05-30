@@ -18,7 +18,9 @@ import { Button } from "@/components/ui/button";
 
 export function SentMessagesView() {
   const t = useTranslations("mail.list");
-  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(
+    null,
+  );
 
   const messagesQuery = useApiQuery<MailFolderMessage[]>({
     queryKey: ["messages", "folder", "SENT"],
@@ -55,14 +57,6 @@ export function SentMessagesView() {
     },
   });
 
-  if (messagesQuery.isPending) {
-    return <p className="text-sm text-muted-foreground">{t("loading")}</p>;
-  }
-
-  if (messagesQuery.isError) {
-    return <p className="text-sm text-destructive">{t("loadFailed")}</p>;
-  }
-
   const messages = messagesQuery.data ?? [];
 
   useEffect(() => {
@@ -74,6 +68,14 @@ export function SentMessagesView() {
       prev && messages.some((m) => m.id === prev) ? prev : messages[0]!.id,
     );
   }, [messages]);
+
+  if (messagesQuery.isPending) {
+    return <p className="text-sm text-muted-foreground">{t("loading")}</p>;
+  }
+
+  if (messagesQuery.isError) {
+    return <p className="text-sm text-destructive">{t("loadFailed")}</p>;
+  }
 
   return (
     <div className="flex min-h-0 flex-1 gap-4">
@@ -92,7 +94,9 @@ export function SentMessagesView() {
             size="sm"
             variant="outline"
             disabled={!selectedMessageId}
-            onClick={() => selectedMessageId && toggleStarMutation.mutate(selectedMessageId)}
+            onClick={() =>
+              selectedMessageId && toggleStarMutation.mutate(selectedMessageId)
+            }
           >
             <Star className="size-4" />
             Star
@@ -101,7 +105,9 @@ export function SentMessagesView() {
             size="sm"
             variant="outline"
             disabled={!selectedMessageId}
-            onClick={() => selectedMessageId && archiveMutation.mutate(selectedMessageId)}
+            onClick={() =>
+              selectedMessageId && archiveMutation.mutate(selectedMessageId)
+            }
           >
             <Archive className="size-4" />
             Archive
@@ -110,7 +116,9 @@ export function SentMessagesView() {
             size="sm"
             variant="destructive"
             disabled={!selectedMessageId}
-            onClick={() => selectedMessageId && trashMutation.mutate(selectedMessageId)}
+            onClick={() =>
+              selectedMessageId && trashMutation.mutate(selectedMessageId)
+            }
           >
             <Trash2 className="size-4" />
             Delete
@@ -124,4 +132,3 @@ export function SentMessagesView() {
     </div>
   );
 }
-

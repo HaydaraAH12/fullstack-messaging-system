@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import nodemailer, { type Transporter } from 'nodemailer';
 
@@ -17,15 +17,33 @@ type SendMessageEmailInput = {
 };
 
 @Injectable()
-export class MailService {
+export class MailService implements OnModuleInit {
   private readonly logger = new Logger(MailService.name);
   private readonly fromAddress: string;
+  private readonly inboxUrl: string | null;
   private readonly transporter: Transporter | null;
 
   constructor(private readonly config: ConfigService) {
     this.fromAddress =
-      this.config.get<string>('MAIL_FROM') ?? 'no-reply@mail-system.local';
+      this.config.get<string>('MAIL_FROM') ??
+      this.config.get<string>('SMTP_USER') ??
+      'no-reply@mail-system.local';
+    this.inboxUrl = this.buildInboxUrl();
     this.transporter = this.createTransporter();
+  }
+
+  async onModuleInit(): Promise<void> {
+    if (!this.transporter) return;
+
+    try {
+      await this.transporter.verify();
+      this.logger.log('SMTP connection verified — outbound email is enabled');
+    } catch (error) {
+      this.logger.error(
+        'SMTP verify failed. Check Gmail App Password and .env values.',
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   async sendNewMessageEmails(input: SendMessageEmailInput): Promise<void> {
@@ -75,6 +93,10 @@ export class MailService {
 
     const secure = secureRaw ? secureRaw.toLowerCase() === 'true' : port === 465;
 
+    this.logger.log(
+      `SMTP enabled (${host}:${port}, secure=${secure}, user=${user})`,
+    );
+
     return nodemailer.createTransport({
       host,
       port,
@@ -83,7 +105,15 @@ export class MailService {
         user,
         pass,
       },
+      // Gmail / most providers on port 587 expect STARTTLS
+      ...(port === 587 && !secure ? { requireTLS: true } : {}),
     });
+  }
+
+  private buildInboxUrl(): string | null {
+    const frontend = this.config.get<string>('FRONTEND_URL')?.replace(/\/$/, '');
+    if (!frontend) return null;
+    return `${frontend}/inbox`;
   }
 
   private buildTextBody(
@@ -99,7 +129,9 @@ export class MailService {
       '',
       input.body,
       '',
-      'Open your inbox to reply.',
+      this.inboxUrl
+        ? `Open your inbox: ${this.inboxUrl}`
+        : 'Open your inbox in the app to reply.',
     ].join('\n');
   }
 
@@ -118,7 +150,11 @@ export class MailService {
       <p>You received a new message from <strong>${input.senderName}</strong>.</p>
       <p><strong>Subject:</strong> ${input.subject}</p>
       <p>${escapedBody}</p>
-      <p>Open your inbox to reply.</p>
+      <p>${
+        this.inboxUrl
+          ? `<a href="${this.inboxUrl}">Open your inbox</a> to reply.`
+          : 'Open your inbox in the app to reply.'
+      }</p>
     `;
   }
 }

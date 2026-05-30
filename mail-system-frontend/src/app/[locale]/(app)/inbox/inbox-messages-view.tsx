@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import type { MailFolderMessage, MailMessageDetails } from "@/types/mail";
 import {
@@ -11,6 +11,7 @@ import {
   markMessageAsRead,
   toggleMessageStar,
 } from "@/lib/api/mail-messages";
+import { useQueryClient } from "@tanstack/react-query";
 import { useApiQuery, useApiMutation } from "@/hooks/use-api";
 import { ComposeMailPanel } from "@/components/mail/compose-mail-panel";
 import { MessageDetailPanel } from "@/components/mail/message-detail-panel";
@@ -38,6 +39,7 @@ function savePinnedIds(ids: Set<string>) {
 
 export function InboxMessagesView() {
   const t = useTranslations("mail.list");
+  const queryClient = useQueryClient();
   const pinnedIds = useMemo(() => loadPinnedIds(), []);
   const pathname = usePathname();
   const router = useRouter();
@@ -128,6 +130,15 @@ export function InboxMessagesView() {
             <ComposeMailPanel
               onCancel={() => {
                 router.replace(pathname);
+              }}
+              onSent={() => {
+                router.replace(pathname);
+                void queryClient.invalidateQueries({
+                  queryKey: ["messages", "folder", "INBOX"],
+                });
+                void queryClient.invalidateQueries({
+                  queryKey: ["messages", "folder", "SENT"],
+                });
               }}
             />
           ) : (

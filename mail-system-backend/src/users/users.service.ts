@@ -23,6 +23,46 @@ export class UsersService {
     return users;
   }
 
+  /** Compose autocomplete — email + display name only (no user ids). */
+  async searchDirectory(query: string, excludeUserId: string) {
+    const term = query.trim();
+    if (term.length < 2) {
+      return [];
+    }
+
+    const tokens = term
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    return this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        id: { not: excludeUserId },
+        OR: [
+          { email: { contains: term, mode: 'insensitive' } },
+          { username: { contains: term, mode: 'insensitive' } },
+          { fullName: { contains: term, mode: 'insensitive' } },
+          ...(tokens.length > 1
+            ? [
+                {
+                  AND: tokens.map((t) => ({
+                    fullName: { contains: t, mode: 'insensitive' as const },
+                  })),
+                },
+              ]
+            : []),
+        ],
+      },
+      select: {
+        email: true,
+        fullName: true,
+      },
+      take: 10,
+      orderBy: { email: 'asc' },
+    });
+  }
+
   async findOne(id: string) {
     return this.prisma.user.findUnique({
       where: { id },

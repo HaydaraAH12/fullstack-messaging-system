@@ -26,18 +26,43 @@ export class MessagesService {
       if (!parent) throw new NotFoundException('Parent message not found');
     }
 
-    const recipientIds = dto.recipients.map((r) => r.userId);
-    if (recipientIds.includes(senderId)) {
+    const recipientsByEmail = this.normalizeRecipientsByEmail(dto.recipients);
+    const recipientEmails = [...recipientsByEmail.keys()];
+
+    const sender = await this.prisma.user.findUnique({
+      where: { id: senderId },
+      select: { email: true },
+    });
+    if (!sender) {
+      throw new NotFoundException('Sender not found');
+    }
+    if (recipientEmails.includes(sender.email.toLowerCase())) {
       throw new BadRequestException('Cannot send a message to yourself');
     }
 
     const users = await this.prisma.user.findMany({
-      where: { id: { in: recipientIds } },
+      where: {
+        email: { in: recipientEmails, mode: 'insensitive' },
+        isActive: true,
+      },
       select: { id: true, email: true, fullName: true },
     });
-    if (users.length !== recipientIds.length) {
-      throw new NotFoundException('One or more recipients not found');
+
+    const userIdByEmail = new Map(
+      users.map((u) => [u.email.toLowerCase(), u] as const),
+    );
+    const missing = recipientEmails.filter((email) => !userIdByEmail.has(email));
+    if (missing.length) {
+      throw new NotFoundException(
+        `Recipient not found: ${missing.join(', ')}`,
+      );
     }
+
+    const resolvedRecipients = recipientEmails.map((email) => ({
+      userId: userIdByEmail.get(email)!.id,
+      type: recipientsByEmail.get(email)!,
+    }));
+    const recipientIds = resolvedRecipients.map((r) => r.userId);
 
     const message = await this.prisma.$transaction(async (tx: any) => {
       const msg = await tx.message.create({
@@ -63,15 +88,15 @@ export class MessagesService {
       });
 
       await tx.messageRecipient.createMany({
-        data: dto.recipients.map((r) => ({
+        data: resolvedRecipients.map((r) => ({
           messageId: msg.id,
           recipientId: r.userId,
-          recipientType: r.type ?? RecipientType.TO,
+          recipientType: r.type,
           folder: MessageFolder.INBOX,
         })),
       });
 
-      const notifiableRecipients = dto.recipients.filter(
+      const notifiableRecipients = resolvedRecipients.filter(
         (r) => r.type !== RecipientType.BCC,
       );
       await tx.notification.createMany({
@@ -114,6 +139,42 @@ export class MessagesService {
     });
 
     return this.findMessageById(message.id, senderId);
+  }
+
+  private normalizeRecipientsByEmail(
+    recipients: SendMessageDto['recipients'],
+  ): Map<string, RecipientType> {
+    const byEmail = new Map<string, RecipientType>();
+
+    for (const recipient of recipients) {
+      const email = recipient.email.trim().toLowerCase();
+      if (!email) continue;
+
+      const type = recipient.type ?? RecipientType.TO;
+      const existing = byEmail.get(email);
+      if (!existing || this.recipientTypeRank(type) < this.recipientTypeRank(existing)) {
+        byEmail.set(email, type);
+      }
+    }
+
+    if (byEmail.size === 0) {
+      throw new BadRequestException('At least one recipient is required');
+    }
+
+    return byEmail;
+  }
+
+  private recipientTypeRank(type: RecipientType): number {
+    switch (type) {
+      case RecipientType.TO:
+        return 0;
+      case RecipientType.CC:
+        return 1;
+      case RecipientType.BCC:
+        return 2;
+      default:
+        return 3;
+    }
   }
 
   private async resolveSenderName(senderId: string): Promise<string> {

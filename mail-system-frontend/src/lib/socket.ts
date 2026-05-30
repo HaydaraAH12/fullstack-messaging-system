@@ -17,6 +17,7 @@ export function getMailSocket(token: string): Socket {
   mailSocket = io(`${WS_URL}/mail`, {
     auth: { token },
     autoConnect: true,
+    withCredentials: true,
   });
 
   return mailSocket;

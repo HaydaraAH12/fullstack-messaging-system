@@ -20,6 +20,7 @@
     "drafts": "Drafts",
     "draftsDescription": "Draft messages — connect to API later.",
     "loadError": "Failed to load sidebar",
+    "retry": "Try again",
     "quickActions": "Quick actions",
     "moveUp": "Move up",
     "moveDown": "Move down",

@@ -1,3 +1,5 @@
+export type { MailRecipientDirectoryEntry } from "@mail-system/shared";
+
 export type {
   MailFolderMessage,
   MailMessageAttachment,

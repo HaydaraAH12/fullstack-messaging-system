@@ -3,7 +3,12 @@ import type {
   MailMessageDetails,
   MailFolderMessage,
   MailMessageFolder,
+  SendMessageRequest,
 } from "@/types/mail";
+
+export function sendMessage(body: SendMessageRequest) {
+  return apiClient.post<MailMessageDetails>("/messages", body);
+}
 
 export function getMessagesByFolder(folder: MailMessageFolder) {
   return apiClient.get<MailFolderMessage[]>(

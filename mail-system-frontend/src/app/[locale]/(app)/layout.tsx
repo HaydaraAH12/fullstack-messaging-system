@@ -2,6 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { use } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { AppShell } from "@/components/app-shell";
+import { MailRouteShell } from "@/components/mail-route-shell";
 
 type Props = {
   children: React.ReactNode;
@@ -14,7 +15,9 @@ export default function AppLayout({ children, params }: Props) {
 
   return (
     <AuthGuard>
-      <AppShell>{children}</AppShell>
+      <AppShell>
+        <MailRouteShell>{children}</MailRouteShell>
+      </AppShell>
     </AuthGuard>
   );
 }
